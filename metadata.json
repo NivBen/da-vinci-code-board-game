@@ -1,0 +1,7 @@
+{
+  "name": "Da Vinci Logic",
+  "description": "A strategic deduction board game. Crack secret codes in this mobile-ready logic challenge.",
+  "requestFramePermissions": [],
+  "orientation": "portrait",
+  "fullscreen": true
+}

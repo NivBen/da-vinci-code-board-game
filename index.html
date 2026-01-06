@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Da Vinci Logic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              wood: {
+                50: '#fbf7f1',
+                100: '#f5eadb',
+                200: '#ebcfb2',
+                300: '#dfb083',
+                400: '#d48d56',
+                500: '#ce7134',
+                600: '#bf592a',
+                700: '#9f4323',
+                800: '#813622',
+                900: '#682e1e',
+              },
+            },
+            animation: {
+              'bounce-slow': 'bounce 3s infinite',
+            }
+          },
+        },
+      };
+    </script>
+    <style>
+      /* Custom scrollbar for chat */
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "canvas-confetti": "https://esm.sh/canvas-confetti@1.9.2"
+  }
+}
+</script>
+</head>
+  <body class="bg-wood-100 dark:bg-slate-900 transition-colors duration-300">
+    <div id="root"></div>
+  </body>
+</html>
