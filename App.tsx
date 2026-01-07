@@ -640,7 +640,8 @@ function App() {
       </header>
 
       <main className="flex-1 flex flex-col relative overflow-hidden">
-        <div className="flex-1 flex flex-col relative overflow-y-auto p-4 md:p-8">
+        {/* Opponents Area: Scrollable and takes remaining space */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
             <div className="flex flex-wrap justify-center gap-4 md:gap-8 mb-8 min-h-[160px]">
                 {gameState?.players.filter(p => p.id !== currentPlayer?.id).map(player => {
                     return (
@@ -667,105 +668,107 @@ function App() {
                     </div>
                 )})}
             </div>
+            {/* Spacer to allow scrolling past the fixed bottom area if visually overlapping */}
+            <div className="h-12 md:h-0"></div>
+        </div>
 
-            {gameState?.winnerId && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-2xl text-center transform scale-110">
-                        <h2 className="text-4xl font-bold text-wood-600 dark:text-wood-400 mb-2">Game Over</h2>
-                        <p className="text-2xl text-gray-700 dark:text-gray-200 mb-6">
-                            {gameState.players.find(p => p.id === gameState.winnerId)?.name} Wins!
-                        </p>
-                        <button 
-                            onClick={() => setConfig(null)}
-                            className="px-6 py-3 bg-wood-500 text-white rounded-full font-bold shadow-lg hover:bg-wood-600"
-                        >
-                            New Game
-                        </button>
+        {gameState?.winnerId && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-2xl text-center transform scale-110">
+                    <h2 className="text-4xl font-bold text-wood-600 dark:text-wood-400 mb-2">Game Over</h2>
+                    <p className="text-2xl text-gray-700 dark:text-gray-200 mb-6">
+                        {gameState.players.find(p => p.id === gameState.winnerId)?.name} Wins!
+                    </p>
+                    <button 
+                        onClick={() => setConfig(null)}
+                        className="px-6 py-3 bg-wood-500 text-white rounded-full font-bold shadow-lg hover:bg-wood-600"
+                    >
+                        New Game
+                    </button>
+                </div>
+            </div>
+        )}
+
+        {/* User Hand Area: Fixed at the bottom of the flex container (via standard flow but z-indexed) */}
+        <div className="relative z-30 bg-white dark:bg-slate-800 p-4 rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] border-t border-wood-200 dark:border-slate-700">
+            <div className="max-w-4xl mx-auto">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+                    <div className="flex items-center gap-3">
+                        <span className="text-3xl md:text-4xl">{currentPlayer?.avatar}</span>
+                        <div>
+                            <h2 className="text-lg md:text-xl font-bold dark:text-white">
+                                {currentPlayer?.isBot ? `${currentPlayer.name}'s turn...` : "Your Hand"}
+                            </h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {gameState?.phase === GamePhase.DRAW ? "Time to draw..." : 
+                                    gameState?.phase === GamePhase.GUESS ? "Choose a tile to guess." :
+                                    gameState?.phase === GamePhase.RESOLVE ? "Correct! Continue or end turn?" :
+                                    "Waiting..."}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                        {gameState?.phase === GamePhase.RESOLVE && !currentPlayer?.isBot && (
+                            <>
+                                <button 
+                                    onClick={continueTurn}
+                                    className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-sm hover:bg-green-600"
+                                >
+                                    Again
+                                </button>
+                                <button 
+                                    onClick={() => endTurn(true)}
+                                    className="px-4 py-2 bg-gray-500 text-white rounded-lg font-bold text-sm hover:bg-gray-600"
+                                >
+                                    Finish
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
-            )}
 
-            <div className="mt-auto bg-white dark:bg-slate-800 p-4 rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] border-t border-wood-200 dark:border-slate-700">
-                <div className="max-w-4xl mx-auto">
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
-                        <div className="flex items-center gap-3">
-                            <span className="text-3xl md:text-4xl">{currentPlayer?.avatar}</span>
-                            <div>
-                                <h2 className="text-lg md:text-xl font-bold dark:text-white">
-                                    {currentPlayer?.isBot ? `${currentPlayer.name}'s turn...` : "Your Hand"}
-                                </h2>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    {gameState?.phase === GamePhase.DRAW ? "Time to draw..." : 
-                                     gameState?.phase === GamePhase.GUESS ? "Choose a tile to guess." :
-                                     gameState?.phase === GamePhase.RESOLVE ? "Correct! Continue or end turn?" :
-                                     "Waiting..."}
-                                </p>
-                            </div>
-                        </div>
-                        
-                        {/* Removed Draw Button from here, kept Resolve buttons */}
-                        <div className="flex gap-2">
-                            {gameState?.phase === GamePhase.RESOLVE && !currentPlayer?.isBot && (
-                                <>
-                                    <button 
-                                        onClick={continueTurn}
-                                        className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-sm hover:bg-green-600"
-                                    >
-                                        Again
-                                    </button>
-                                    <button 
-                                        onClick={() => endTurn(true)}
-                                        className="px-4 py-2 bg-gray-500 text-white rounded-lg font-bold text-sm hover:bg-gray-600"
-                                    >
-                                        Finish
-                                    </button>
-                                </>
-                            )}
-                        </div>
+                <div className="flex flex-col items-center gap-2 min-h-[90px] w-full">
+                        {/* Centered Draw Button */}
+                        {gameState?.phase === GamePhase.DRAW && !currentPlayer?.isBot && (
+                        <button 
+                            onClick={drawTile}
+                            className="mb-2 px-8 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl shadow-lg font-bold text-lg hover:scale-105 transition-transform animate-pulse"
+                        >
+                            Draw ({gameState.pool.length})
+                        </button>
+                    )}
+
+                        {/* User/Bot Hand - Pop up revealed cards. Increased gap for REV banner visibility. */}
+                    <div className="flex flex-wrap gap-3 md:gap-6 justify-center max-w-full px-2 pt-2 md:pt-4">
+                            {currentPlayer?.hand.map((tile, idx) => (
+                            <TileComponent 
+                                key={tile.id} 
+                                tile={tile} 
+                                isHidden={currentPlayer.isBot} 
+                                revealDirection="up" // Pop up
+                                showRevBanner={true} // Show banner for user
+                                onClick={() => handleTileClick(currentPlayer.id, idx, tile.id)}
+                                draggable={!currentPlayer.isBot && tile.isJoker && !tile.isPlaced && !tile.isRevealed}
+                                onDragStart={(e) => handleDragStart(e, tile.id)}
+                                onDrop={(e) => handleDrop(e, tile.id)}
+                            />
+                            ))}
                     </div>
-
-                    <div className="flex flex-col items-center gap-2 min-h-[90px] w-full">
-                         {/* Centered Draw Button */}
-                         {gameState?.phase === GamePhase.DRAW && !currentPlayer?.isBot && (
-                            <button 
-                                onClick={drawTile}
-                                className="mb-2 px-8 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl shadow-lg font-bold text-lg hover:scale-105 transition-transform animate-pulse"
-                            >
-                                Draw ({gameState.pool.length})
-                            </button>
-                        )}
-
-                         {/* User/Bot Hand - Pop up revealed cards. Increased gap for REV banner visibility. */}
-                        <div className="flex flex-wrap gap-3 md:gap-6 justify-center max-w-full px-2 pt-2 md:pt-4">
-                             {currentPlayer?.hand.map((tile, idx) => (
-                                <TileComponent 
-                                    key={tile.id} 
-                                    tile={tile} 
-                                    isHidden={currentPlayer.isBot} 
-                                    revealDirection="up" // Pop up
-                                    showRevBanner={true} // Show banner for user
-                                    onClick={() => handleTileClick(currentPlayer.id, idx, tile.id)}
-                                    draggable={!currentPlayer.isBot && tile.isJoker && !tile.isPlaced && !tile.isRevealed}
-                                    onDragStart={(e) => handleDragStart(e, tile.id)}
-                                    onDrop={(e) => handleDrop(e, tile.id)}
-                                />
-                             ))}
+                    
+                    {gameState?.drawnTile && (
+                        <div className="flex flex-col items-center gap-1 border-l-2 pl-4 md:pl-8 border-dashed border-gray-300 dark:border-slate-600 mt-2">
+                            <span className="text-[10px] uppercase font-bold text-blue-500">Drawn</span>
+                            <TileComponent 
+                                tile={gameState.drawnTile} 
+                                isNew={true} 
+                                isHidden={currentPlayer?.isBot && !gameState.drawnTile.isRevealed} 
+                                onClick={() => handleTileClick(currentPlayer?.id, -1, gameState.drawnTile!.id)}
+                                draggable={!currentPlayer?.isBot && gameState.drawnTile.isJoker && !gameState.drawnTile.isPlaced}
+                                onDragStart={(e) => handleDragStart(e, gameState.drawnTile!.id)}
+                            />
                         </div>
-                        
-                        {gameState?.drawnTile && (
-                            <div className="flex flex-col items-center gap-1 border-l-2 pl-4 md:pl-8 border-dashed border-gray-300 dark:border-slate-600 mt-2">
-                                <span className="text-[10px] uppercase font-bold text-blue-500">Drawn</span>
-                                <TileComponent 
-                                    tile={gameState.drawnTile} 
-                                    isNew={true} 
-                                    isHidden={currentPlayer?.isBot && !gameState.drawnTile.isRevealed} 
-                                    onClick={() => handleTileClick(currentPlayer?.id, -1, gameState.drawnTile!.id)}
-                                    draggable={!currentPlayer?.isBot && gameState.drawnTile.isJoker && !gameState.drawnTile.isPlaced}
-                                    onDragStart={(e) => handleDragStart(e, gameState.drawnTile!.id)}
-                                />
-                            </div>
-                        )}
-                    </div>
+                    )}
                 </div>
             </div>
         </div>
