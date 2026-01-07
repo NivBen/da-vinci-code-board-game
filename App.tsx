@@ -34,6 +34,7 @@ function App() {
   const [guessModal, setGuessModal] = useState<{ targetPlayerId: string; targetTileIndex: number; targetTileId: string } | null>(null);
   const [showPassScreen, setShowPassScreen] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   const turnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -90,6 +91,12 @@ function App() {
     if (humanCount > 1) {
        setShowPassScreen(true);
     }
+  };
+
+  const quitGame = () => {
+      setShowExitModal(false);
+      setConfig(null);
+      setGameState(null);
   };
 
   // --- Confetti Effect ---
@@ -575,6 +582,14 @@ function App() {
              )}
             
             <button 
+                onClick={() => setShowExitModal(true)}
+                className="p-2 bg-red-500/80 rounded-full hover:bg-red-600 text-xs md:text-sm font-bold px-3 transition-colors flex items-center gap-1"
+                title="Quit Game"
+            >
+                ✕ <span className="hidden md:inline">Quit</span>
+            </button>
+
+            <button 
                 onClick={() => setShowInstructions(true)}
                 className="p-2 bg-white/10 rounded-full hover:bg-white/20 text-xs md:text-sm font-bold px-3 transition-colors"
                 title="Rules"
@@ -708,6 +723,30 @@ function App() {
             </div>
         </div>
       </main>
+
+      {/* Modal for Exit Confirmation */}
+      {showExitModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center border-2 border-wood-200 dark:border-slate-600">
+                <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Quit Game?</h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-8">Current progress will be lost.</p>
+                <div className="flex gap-4 justify-center">
+                    <button 
+                        onClick={() => setShowExitModal(false)}
+                        className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-gray-800 dark:text-white font-bold rounded-xl transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={quitGame}
+                        className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl shadow-lg transition-colors"
+                    >
+                        Quit
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
 
       {/* Modal for Guessing */}
       {guessModal && (
