@@ -9,6 +9,8 @@ interface TileComponentProps {
   onClick?: () => void;
   isSelected?: boolean;
   isNew?: boolean; // Highlight for newly drawn
+  revealDirection?: 'up' | 'down'; // Controls visual pop direction for revealed cards
+  showRevBanner?: boolean; // Controls visibility of the "REV" ribbon
   
   // Drag and Drop
   draggable?: boolean;
@@ -23,6 +25,8 @@ const TileComponent: React.FC<TileComponentProps> = ({
   onClick,
   isSelected = false,
   isNew = false,
+  revealDirection,
+  showRevBanner = false,
   draggable = false,
   onDragStart,
   onDrop,
@@ -31,6 +35,16 @@ const TileComponent: React.FC<TileComponentProps> = ({
   const showFace = tile.isRevealed || !isHidden;
   const isJoker = tile.isJoker || tile.value === JOKER_VALUE;
 
+  // Visual transformation for revealed cards
+  let transformClasses = '';
+  if (tile.isRevealed) {
+      if (revealDirection === 'up') {
+          transformClasses = '-translate-y-3 md:-translate-y-6 z-0 brightness-95';
+      } else if (revealDirection === 'down') {
+          transformClasses = 'translate-y-2 md:translate-y-4 z-0 brightness-95';
+      }
+  }
+
   const baseClasses = `
     relative flex items-center justify-center w-10 h-14 md:w-14 md:h-20 rounded shadow-md border-2 transition-all duration-300 transform select-none
     ${isInteractable ? 'cursor-pointer hover:-translate-y-2 hover:shadow-xl' : ''}
@@ -38,6 +52,7 @@ const TileComponent: React.FC<TileComponentProps> = ({
     ${!isInteractable && !draggable ? 'cursor-default' : ''}
     ${isSelected ? 'ring-4 ring-yellow-400 -translate-y-2 scale-105 z-10' : ''}
     ${isNew ? 'ring-2 ring-blue-400' : ''}
+    ${transformClasses}
   `;
 
   const colorClasses =
@@ -63,7 +78,6 @@ const TileComponent: React.FC<TileComponentProps> = ({
       {showFace ? (
         <span className="text-2xl md:text-4xl font-bold font-mono">
           {isJoker ? '—' : tile.value}
-          {!isJoker && (tile.value === 6 || tile.value === 9) ? <span className="absolute bottom-1 right-1 text-[8px] md:text-[10px] opacity-50">_</span> : null}
         </span>
       ) : (
         <div className="w-full h-full flex items-center justify-center opacity-20">
@@ -72,23 +86,23 @@ const TileComponent: React.FC<TileComponentProps> = ({
         </div>
       )}
       
-      {/* Indicator for revealed tiles (if they are face up because they were revealed by error) */}
-      {tile.isRevealed && isHidden && (
-        <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1 rounded-full shadow">
+      {/* Indicator for revealed tiles - Show only if showRevBanner is true */}
+      {tile.isRevealed && showRevBanner && (
+        <div className="absolute -top-3 -right-2 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-lg z-20 border border-white dark:border-slate-800 animate-bounce-slow">
           REV
         </div>
       )}
 
       {/* Indicator for newly drawn tile */}
       {isNew && !tile.isRevealed && (
-         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[10px] px-1 rounded-full shadow">
+         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[10px] px-1 rounded-full shadow z-20">
          NEW
        </div>
       )}
 
       {/* Indicator for Own Joker that can be moved (only if visible to owner and not revealed) */}
       {isJoker && !isHidden && !tile.isRevealed && draggable && (
-        <div className="absolute -top-2 -left-2 bg-yellow-400 text-black text-[10px] px-1 rounded-full shadow font-bold animate-pulse">
+        <div className="absolute -top-2 -left-2 bg-yellow-400 text-black text-[10px] px-1 rounded-full shadow font-bold animate-pulse z-20">
           DRAG
         </div>
       )}

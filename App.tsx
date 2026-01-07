@@ -35,8 +35,10 @@ function App() {
   const [showPassScreen, setShowPassScreen] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showWrongGuessBanner, setShowWrongGuessBanner] = useState(false);
 
   const turnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrongGuessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // --- Initialization ---
 
@@ -125,7 +127,7 @@ function App() {
 
   // --- Timer Logic ---
   useEffect(() => {
-    if (!gameState || gameState.winnerId || showPassScreen || config?.timerSeconds === 0) return;
+    if (!gameState || gameState.winnerId || showPassScreen || config?.timerSeconds === 0 || showWrongGuessBanner) return;
     
     const currentPlayer = gameState.players.find(p => p.id === gameState.currentTurnPlayerId);
     if(currentPlayer?.isBot) return; // Don't time bots
@@ -139,7 +141,7 @@ function App() {
     return () => {
       if (turnTimerRef.current) clearTimeout(turnTimerRef.current);
     };
-  }, [timeLeft, gameState, showPassScreen, config]);
+  }, [timeLeft, gameState, showPassScreen, config, showWrongGuessBanner]);
 
   const handleTimeOut = () => {
       if (!gameState) return;
@@ -187,6 +189,11 @@ function App() {
 
   const handleTileClick = (targetPlayerId: string, tileIndex: number, tileId: string) => {
     if (!gameState) return;
+    if (showWrongGuessBanner) return; // Block clicks during banner
+    
+    const currentPlayer = gameState.players.find(p => p.id === gameState.currentTurnPlayerId);
+    if (currentPlayer?.isBot) return; // Prevent clicking if it's bot's turn
+
     if (gameState.phase !== GamePhase.GUESS) return;
     
     const targetPlayer = gameState.players.find(p => p.id === targetPlayerId);
@@ -200,13 +207,14 @@ function App() {
   };
   
   const handleDragStart = (e: React.DragEvent, tileId: string) => {
+      if (showWrongGuessBanner) return;
       e.dataTransfer.setData('text/plain', tileId);
       e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleDrop = (e: React.DragEvent, targetTileId: string) => {
       e.preventDefault();
-      if (!gameState) return;
+      if (!gameState || showWrongGuessBanner) return;
 
       const draggedId = e.dataTransfer.getData('text/plain');
       if (draggedId === targetTileId) return; 
@@ -266,6 +274,18 @@ function App() {
       }
   };
 
+  const handleWrongGuessCompletion = () => {
+       if (wrongGuessTimeoutRef.current) {
+           clearTimeout(wrongGuessTimeoutRef.current);
+           wrongGuessTimeoutRef.current = null;
+       }
+       // Prevent double execution if already hidden
+       if (!showWrongGuessBanner) return;
+
+       setShowWrongGuessBanner(false);
+       addLog(`Wrong guess!`);
+       endTurn(false);
+  };
 
   const submitGuess = (value: number) => {
     if (!gameState || !guessModal) return;
@@ -306,8 +326,21 @@ function App() {
       checkWinner(newPlayers);
 
     } else {
-      addLog(`Wrong guess!`);
-      endTurn(false);
+      // Wrong Guess Logic
+      setShowWrongGuessBanner(true);
+      
+      // Delay before ending turn, cleared if user clicks
+      wrongGuessTimeoutRef.current = setTimeout(() => {
+          // Check if still showing to avoid race condition with click
+          setShowWrongGuessBanner(prev => {
+              if(prev) {
+                  addLog(`Wrong guess!`);
+                  endTurn(false);
+                  return false;
+              }
+              return prev;
+          });
+      }, 3000);
     }
   };
 
@@ -383,7 +416,7 @@ function App() {
 
   // --- Bot Logic ---
   useEffect(() => {
-      if (!gameState || gameState.winnerId || showPassScreen) return;
+      if (!gameState || gameState.winnerId || showPassScreen || showWrongGuessBanner) return;
       
       const currentPlayer = gameState.players.find(p => p.id === gameState.currentTurnPlayerId);
       if (currentPlayer && currentPlayer.isBot) {
@@ -392,7 +425,7 @@ function App() {
           }, 1500);
           return () => clearTimeout(timer);
       }
-  }, [gameState, showPassScreen]);
+  }, [gameState, showPassScreen, showWrongGuessBanner]);
 
   const executeBotMove = () => {
       if (!gameState) return;
@@ -542,6 +575,10 @@ function App() {
 
   const currentPlayer = gameState?.players.find(p => p.id === gameState?.currentTurnPlayerId);
 
+  // Check if we are in single player mode (1 human vs bots)
+  const humanCount = config ? config.playerCount - config.botCount : 0;
+  const isSinglePlayer = humanCount === 1;
+
   if (showPassScreen) {
       return (
         <div className={`h-screen flex flex-col items-center justify-center bg-wood-600 dark:bg-slate-900 text-white ${darkMode ? 'dark' : ''}`}>
@@ -605,26 +642,30 @@ function App() {
       <main className="flex-1 flex flex-col relative overflow-hidden">
         <div className="flex-1 flex flex-col relative overflow-y-auto p-4 md:p-8">
             <div className="flex flex-wrap justify-center gap-4 md:gap-8 mb-8 min-h-[160px]">
-                {gameState?.players.filter(p => p.id !== currentPlayer?.id).map(player => (
+                {gameState?.players.filter(p => p.id !== currentPlayer?.id).map(player => {
+                    return (
                     <div key={player.id} className={`bg-white/50 dark:bg-slate-800/50 p-4 rounded-xl border-2 ${player.isEliminated ? 'opacity-50 border-red-400' : 'border-wood-300 dark:border-slate-600'} transition-all`}>
                         <div className="flex items-center gap-2 mb-3">
                             <span className="text-xl md:text-2xl">{player.avatar}</span>
                             <span className="font-bold text-wood-900 dark:text-wood-100 text-sm md:text-base">{player.name}</span>
                             {player.isEliminated && <span className="text-red-600 font-bold text-[10px] uppercase ml-auto">Out</span>}
                         </div>
-                        <div className="flex gap-1 md:gap-2 justify-center">
+                        {/* Opponent Hand - Cards wrap if needed. Extra gap. Revealed cards pop down. No REV banner. */}
+                        <div className="flex flex-wrap gap-2 md:gap-3 justify-center pb-4">
                             {player.hand.map((tile, idx) => (
                                 <TileComponent 
                                     key={tile.id} 
                                     tile={tile} 
                                     isHidden={!tile.isRevealed}
-                                    isInteractable={!player.isEliminated && gameState?.phase === GamePhase.GUESS && !tile.isRevealed}
+                                    revealDirection="down" // Pop down
+                                    showRevBanner={false} // No text banner for opponents
+                                    isInteractable={!currentPlayer?.isBot && !player.isEliminated && gameState?.phase === GamePhase.GUESS && !tile.isRevealed}
                                     onClick={() => handleTileClick(player.id, idx, tile.id)}
                                 />
                             ))}
                         </div>
                     </div>
-                ))}
+                )})}
             </div>
 
             {gameState?.winnerId && (
@@ -662,15 +703,8 @@ function App() {
                             </div>
                         </div>
                         
+                        {/* Removed Draw Button from here, kept Resolve buttons */}
                         <div className="flex gap-2">
-                            {gameState?.phase === GamePhase.DRAW && !currentPlayer?.isBot && (
-                                <button 
-                                    onClick={drawTile}
-                                    className="px-4 md:px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg shadow-md font-bold text-sm md:text-base hover:scale-105 transition"
-                                >
-                                    Draw ({gameState.pool.length})
-                                </button>
-                            )}
                             {gameState?.phase === GamePhase.RESOLVE && !currentPlayer?.isBot && (
                                 <>
                                     <button 
@@ -690,13 +724,26 @@ function App() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4 md:gap-8 justify-center min-h-[80px] md:min-h-[90px]">
-                        <div className="flex gap-1 md:gap-2">
+                    <div className="flex flex-col items-center gap-2 min-h-[90px] w-full">
+                         {/* Centered Draw Button */}
+                         {gameState?.phase === GamePhase.DRAW && !currentPlayer?.isBot && (
+                            <button 
+                                onClick={drawTile}
+                                className="mb-2 px-8 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl shadow-lg font-bold text-lg hover:scale-105 transition-transform animate-pulse"
+                            >
+                                Draw ({gameState.pool.length})
+                            </button>
+                        )}
+
+                         {/* User/Bot Hand - Pop up revealed cards. Increased gap for REV banner visibility. */}
+                        <div className="flex flex-wrap gap-3 md:gap-6 justify-center max-w-full px-2 pt-2 md:pt-4">
                              {currentPlayer?.hand.map((tile, idx) => (
                                 <TileComponent 
                                     key={tile.id} 
                                     tile={tile} 
                                     isHidden={currentPlayer.isBot} 
+                                    revealDirection="up" // Pop up
+                                    showRevBanner={true} // Show banner for user
                                     onClick={() => handleTileClick(currentPlayer.id, idx, tile.id)}
                                     draggable={!currentPlayer.isBot && tile.isJoker && !tile.isPlaced && !tile.isRevealed}
                                     onDragStart={(e) => handleDragStart(e, tile.id)}
@@ -706,7 +753,7 @@ function App() {
                         </div>
                         
                         {gameState?.drawnTile && (
-                            <div className="flex flex-col items-center gap-1 border-l-2 pl-4 md:pl-8 border-dashed border-gray-300 dark:border-slate-600">
+                            <div className="flex flex-col items-center gap-1 border-l-2 pl-4 md:pl-8 border-dashed border-gray-300 dark:border-slate-600 mt-2">
                                 <span className="text-[10px] uppercase font-bold text-blue-500">Drawn</span>
                                 <TileComponent 
                                     tile={gameState.drawnTile} 
@@ -723,6 +770,28 @@ function App() {
             </div>
         </div>
       </main>
+
+       {/* Banner for Wrong Guess */}
+       {showWrongGuessBanner && (
+        <div 
+            className="fixed inset-0 z-[150] flex items-center justify-center bg-black/40 backdrop-blur-[2px] animate-fade-in cursor-pointer"
+            onClick={handleWrongGuessCompletion} // Click anywhere to skip
+        >
+            <div className="bg-red-600 text-white px-10 py-8 rounded-2xl shadow-2xl animate-bounce-in border-4 border-red-400 transform scale-110 text-center relative max-w-sm mx-4">
+                 <div className="text-5xl mb-4">❌</div>
+                 <h2 className="text-3xl font-bold uppercase tracking-widest mb-4">Wrong Guess</h2>
+                 <button 
+                    className="px-6 py-2 bg-white text-red-600 font-bold rounded-full hover:bg-gray-100 transition-colors shadow-lg text-sm uppercase tracking-wider"
+                    onClick={(e) => {
+                        e.stopPropagation(); // Prevent double triggering
+                        handleWrongGuessCompletion();
+                    }}
+                 >
+                    Continue
+                 </button>
+            </div>
+        </div>
+      )}
 
       {/* Modal for Exit Confirmation */}
       {showExitModal && (
